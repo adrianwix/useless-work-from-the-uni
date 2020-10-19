@@ -13,6 +13,7 @@ def initGame():
               [ '_', '_' , '_' ] ,
               [ '_', '_' , '_' ]]
 
+#HI
 
 # paint the Game - obligatory function that must exist!
 def paintGame(painter : QPainter):
