@@ -4,54 +4,52 @@ from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QPainter
 import GamePlayer
 
-board = None
 cols = 7
-rows = 6
+rows = 7 # TODO: There actually 6 draw
+board = [["_" for y in range(rows)] for x in range(cols)]
 
 
 # optional function - if defined, is called when the game has started before the first move
 # can be necessary, e.g. when having game options
 def initGame():
-    global board
-    board = [["_" for x in range(cols)] for y in range(rows)]
+    pass
+    # global board
+    # board = [["_" for x in range(cols)] for y in range(rows)]
 
-
-# HI
 
 # paint the Game - obligatory function that must exist!
 # change here the size of the board!!!!
 def paintGame(painter: QPainter):
-    painter.fillRect(0, 0, 700, 600, Qt.blue)  # FUELLT RECHTECK AUS
+    global board
+    painter.fillRect(0, 0, 700, 700, Qt.white)  # ERSCHAFFT FREIEN PLATZ OBEN
+    painter.fillRect(0, 100, 700, 600, Qt.blue)  # FUELLT RECHTECK AUS
 
     pen = painter.pen()  # STIFT WIRD ERZEUGT
     pen.setWidth(3)
     painter.setPen(pen)  # PEN WIRD ANGESETZ
-    for y in range(1, rows + 1):
-        painter.drawLine(0, y * 100, 700, y * 100)
-    # painter.drawLine(0, 200, 700, 200)
-    # painter.drawLine(0, 300, 700, 300)
-    # painter.drawLine(0, 400, 700, 400)
-    # painter.drawLine(0, 500, 700, 500)
-    # painter.drawLine(0, 600, 700, 600)  # HORIZONTALE LINIEN
 
-    for x in range(1, cols + 1):
-        painter.drawLine(x * 100, 0, x * 100, 600)
-    # painter.drawLine(100, 0, 100, 600)
-    # painter.drawLine(200, 0, 200, 600)
-    # painter.drawLine(300, 0, 300, 600)
-    # painter.drawLine(400, 0, 400, 600)
-    # painter.drawLine(500, 0, 500, 600)
-    # painter.drawLine(600, 0, 600, 600)
-    # painter.drawLine(700, 0, 700, 600)          # VERTIKALE LINIEN
+    # We offset the rows by one to leave space to "throw the chips"
+    for y in range(2, rows):
+        y1 = y * 100
+        x1 = 0
+        x2 = 700
+        painter.drawLine(x1, y1, x2, y1)  # HORIZONTALE LINIEN
+
+
+    for x in range(1, cols):
+        y1 = 100
+        y2 = 700
+        x1 = x * 100
+        painter.drawLine(x1, y1, x1, y2)  # VERTIKALE LINIEN
 
     font = painter.font()
-    font.setPixelSize(80)                       # PIXELGROESSE VON FONT
+    font.setPixelSize(80)  # PIXELGROESSE VON FONT
     painter.setFont(font)
 
-    for i in range(6):                          # BERECHNET STELLE IM FELD AUF X EBENE
-        for j in range(7):                      # BERECHNET STELLE IM FELD AUF Y EBENE
-            if board[i][j] != '_':
-                painter.drawText(i * 100, j * 100, 100, 100, Qt.AlignCenter, board[i][j])
+    for y in range(rows):  # BERECHNET STELLE IM FELD AUF X EBENE
+        for x in range(cols):  # BERECHNET STELLE IM FELD AUF Y EBENE
+            if board[x][y] != '_':
+                painter.drawText(x * 100, y * 100, 100, 100, Qt.AlignCenter, board[x][y])
 
 
 playerSymbols = ['X', 'O']
@@ -66,15 +64,28 @@ def makeMove(event: QEvent):  # DEFINITON DER FUNKTION MAKE A MOVE
 
     if event.type() == QEvent.MouseButtonRelease:  # BERECHNET FELD AN DER MOUSE LOSGELASSEN WURDE
         pos = event.pos()
-        i = math.floor(pos.x() / 100)
-        j = math.floor(pos.y() / 100)
-        if i < 0 or i > 5 or j < 0 or j > 6:  # CHECK OB AUSSERHALB DES FELDES GEDRÜCKT WURDE WENN NICHT ZU PLAYERSYMBOL
+        x = math.floor(pos.x() / 100)
+        y = math.floor(pos.y() / 100)
+        print("==================")
+        print("x", x)
+        print("y", y)
+        if y != 0 or (x < 0 or x > cols - 1):  # CHECK OB AUSSERHALB DES FELDES GEDRÜCKT WURDE WENN NICHT ZU
             return None
 
         playerSymbol = playerSymbols[currentPlayerIndex]
-        if board[i][j] == '_':  # WENN STELLE X LEER DANN WIRD PLAYERSYMBOL AUF DEM BOARD ZUGEWIESEN
-            board[i][j] = playerSymbol
-            # CHANGE FOR VIERGEWINNT WENN FELD DRUNTER FREI IST; DANN J ERHOEHEN UND NÄCHSTEN CHECKEN
+        # If the place at the top if not empty, then it means that the
+        # whole column is occupy
+        if board[x][1] == '_':
+            # ZUGEWIESEN
+            for yToCheck in range(rows - 1, 0, -1):
+                # if board[y + 1][x] == '_':
+                if board[x][yToCheck] == '_':
+                    board[x][yToCheck] = playerSymbol
+                    break
+
+            # board[y][x] = playerSymbol
+            # CHANGE FOR VIERGEWINNT WENN FELD DRUNTER FREI IST; DANN J ERHOEHEN
+            # UND NÄCHSTEN CHECKEN
 
             if hasWon(playerSymbol):
                 GamePlayer.showMessageLaterForAll('Game Over', GamePlayer.getPlayerNames()[
@@ -82,9 +93,9 @@ def makeMove(event: QEvent):  # DEFINITON DER FUNKTION MAKE A MOVE
                 return -1
 
             draw = True
-            for i in range(6):
-                for j in range(7):
-                    if board[i][j] == '_':
+            for y in range(rows):
+                for x in range(cols):
+                    if board[y][x] == '_':
                         draw = False
                         break
             if draw:
@@ -95,35 +106,42 @@ def makeMove(event: QEvent):  # DEFINITON DER FUNKTION MAKE A MOVE
 
 
 # helper function
-def hasWon(playerSymbol: str): #PLAYERSYMBOL = X/0 #SCHAUT OB DREI GLEICHE SYMBOLE VORLIEGEN
-    for i in range(6):
-        won = True
-        for j in range(7):
-            if board[i][j] != playerSymbol:
-                won = False
-                break
-        if won:
-            return True
+def hasWon(playerSymbol: str):  # PLAYERSYMBOL = X/0 #SCHAUT OB DREI GLEICHE SYMBOLE
+    # VORLIEGEN
+    return (checkHorizontalMatch(playerSymbol) or checkVerticalMatch(playerSymbol))
 
-    for j in range(7):
-        won = True
-        for i in range(6):
-            if board[i][j] != playerSymbol:
-                won = False
-                break
-        if won:
-            return True
 
-    if board[0][0] == playerSymbol and \
-            board[1][1] == playerSymbol and \
-            board[2][2] == playerSymbol:
-        return True
 
-    if board[2][0] == playerSymbol and \
-            board[1][1] == playerSymbol and \
-            board[0][2] == playerSymbol:
-        return True
 
+def checkVerticalMatch(playerSymbol: str):
+    counter = 0
+    for y in range(rows):
+        for x in range(cols):
+            if counter > 3:
+                return True
+            if x == cols - 1 and y == rows - 1 and counter < 4:
+                return False
+            if board[y][x] == playerSymbol:
+                counter += 1
+            if board[y][x] != playerSymbol:
+                counter = 0
+
+    return False
+
+def checkHorizontalMatch(playerSymbol: str):
+    counter = 0
+    for x in range(cols):
+        for y in range(rows):
+            if counter > 3:
+                return True
+            if x == cols - 1 and y == rows - 1 and counter < 4:
+                return False
+            if board[y][x] == playerSymbol:
+                counter += 1
+            if board[y][x] != playerSymbol:
+                counter = 0
+
+    return False
 
 # optional function - only relevant for network mode
 # if not defined, the game will be over if a player leaves the game (e.g. by network interruption)
